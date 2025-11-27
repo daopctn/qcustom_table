@@ -1,78 +1,142 @@
 #include "actionbuttonswidget.h"
+#include "infodialog.h"
+#include "deleteconfirmdialog.h"
+#include "editsavedialog.h"
 #include <QDebug>
-#include <QEvent>
 
-// HoverButton implementation
-HoverButton::HoverButton(const QIcon &normalIcon, const QIcon &hoverIcon, QWidget *parent)
-    : QPushButton(parent)
-    , m_normalIcon(normalIcon)
-    , m_hoverIcon(hoverIcon)
-{
-    setIcon(m_normalIcon);
-    setFixedSize(24, 24);
-    setIconSize(QSize(24, 24));
-    setFlat(true);
-}
-
-void HoverButton::enterEvent(QEvent *event)
-{
-    setIcon(m_hoverIcon);
-    QPushButton::enterEvent(event);
-}
-
-void HoverButton::leaveEvent(QEvent *event)
-{
-    setIcon(m_normalIcon);
-    QPushButton::leaveEvent(event);
-}
-
-// ActionButtonsWidget implementation
-ActionButtonsWidget::ActionButtonsWidget(int row, QWidget *parent)
+ActionButtonsWidget::ActionButtonsWidget(int row, const QString &itemName, QWidget *parent)
     : QWidget(parent)
     , m_row(row)
+    , m_itemName(itemName)
 {
-    // Create horizontal layout
+    qDebug() << "[MEMORY] ActionButtonsWidget CREATED - Row:" << row << "Name:" << itemName;
+
     QHBoxLayout *layout = new QHBoxLayout(this);
     layout->setContentsMargins(8, 4, 8, 4);
     layout->setSpacing(8);
 
-    // Create 3 hover buttons with normal and hover icons
-    // Button 1: Instagram (normal) → Facebook (hover)
-    m_button1 = new HoverButton(QIcon(":/instagram.png"), QIcon(":/facebook.png"), this);
+    // Create buttons
+    m_button1 = new QPushButton("Info", this);
+    m_button2 = new QPushButton("Delete", this);
+    m_button3 = new QPushButton("Edit", this);
 
-    // Button 2: WhatsApp (normal) → Twitter (hover)
-    m_button2 = new HoverButton(QIcon(":/whatsapp.png"), QIcon(":/twitter.png"), this);
+    // Apply inline stylesheet - Info button (Blue)
+    m_button1->setStyleSheet(
+        "QPushButton {"
+        "    background-color: #2196F3;"
+        "    color: white;"
+        "    border: none;"
+        "    border-radius: 4px;"
+        "    padding: 6px 12px;"
+        "    font-size: 11px;"
+        "    font-weight: bold;"
+        "    min-width: 60px;"
+        "}"
+        "QPushButton:hover {"
+        "    background-color: #1976D2;"
+        "}"
+        "QPushButton:pressed {"
+        "    background-color: #0D47A1;"
+        "}"
+    );
 
-    // Button 3: YouTube (normal) → LinkedIn (hover)
-    m_button3 = new HoverButton(QIcon(":/youtube.png"), QIcon(":/linkedin.png"), this);
+    // Apply inline stylesheet - Delete button (Red)
+    m_button2->setStyleSheet(
+        "QPushButton {"
+        "    background-color: #DC143C;"
+        "    color: white;"
+        "    border: none;"
+        "    border-radius: 4px;"
+        "    padding: 6px 12px;"
+        "    font-size: 11px;"
+        "    font-weight: bold;"
+        "    min-width: 60px;"
+        "}"
+        "QPushButton:hover {"
+        "    background-color: #C41230;"
+        "}"
+        "QPushButton:pressed {"
+        "    background-color: #A01020;"
+        "}"
+    );
 
-    // Add buttons to layout with stretch to center them
+    // Apply inline stylesheet - Edit button (Green)
+    m_button3->setStyleSheet(
+        "QPushButton {"
+        "    background-color: #4CAF50;"
+        "    color: white;"
+        "    border: none;"
+        "    border-radius: 4px;"
+        "    padding: 6px 12px;"
+        "    font-size: 11px;"
+        "    font-weight: bold;"
+        "    min-width: 60px;"
+        "}"
+        "QPushButton:hover {"
+        "    background-color: #45A049;"
+        "}"
+        "QPushButton:pressed {"
+        "    background-color: #2E7D32;"
+        "}"
+    );
+
+    m_button1->setCursor(Qt::PointingHandCursor);
+    m_button2->setCursor(Qt::PointingHandCursor);
+    m_button3->setCursor(Qt::PointingHandCursor);
+
     layout->addStretch();
     layout->addWidget(m_button1);
     layout->addWidget(m_button2);
     layout->addWidget(m_button3);
     layout->addStretch();
 
-    // Connect signals
-    connect(m_button1, &QPushButton::clicked, this, &ActionButtonsWidget::onButton1Clicked);
-    connect(m_button2, &QPushButton::clicked, this, &ActionButtonsWidget::onButton2Clicked);
-    connect(m_button3, &QPushButton::clicked, this, &ActionButtonsWidget::onButton3Clicked);
+    connect(m_button1, &QPushButton::clicked, this, &ActionButtonsWidget::onInfoButtonClicked);
+    connect(m_button2, &QPushButton::clicked, this, &ActionButtonsWidget::onDeleteButtonClicked);
+    connect(m_button3, &QPushButton::clicked, this, &ActionButtonsWidget::onEditButtonClicked);
 }
 
-void ActionButtonsWidget::onButton1Clicked()
+ActionButtonsWidget::~ActionButtonsWidget()
 {
-    qDebug() << "Row" << m_row << "- Button 0";
-    emit buttonClicked(m_row, 0);
+    qDebug() << "[MEMORY] ActionButtonsWidget DESTROYED - Row:" << m_row << "Name:" << m_itemName;
 }
 
-void ActionButtonsWidget::onButton2Clicked()
+void ActionButtonsWidget::onInfoButtonClicked()
 {
-    qDebug() << "Row" << m_row << "- Button 1";
-    emit buttonClicked(m_row, 1);
+    InfoDialog *dialog = new InfoDialog(m_row, 0, this);
+    dialog->exec();
+    delete dialog;
 }
 
-void ActionButtonsWidget::onButton3Clicked()
+void ActionButtonsWidget::onDeleteButtonClicked()
 {
-    qDebug() << "Row" << m_row << "- Button 2";
-    emit buttonClicked(m_row, 2);
+    DeleteConfirmDialog *dialog = new DeleteConfirmDialog(m_itemName, this);
+    dialog->exec();
+
+    bool confirmed = dialog->isConfirmed();
+    delete dialog;  // Delete dialog BEFORE emitting signal
+    dialog = nullptr;  // Prevent dangling pointer
+
+    if (confirmed) {
+        emit deleteRequested(m_row);  // This schedules THIS widget for deletion
+        // WARNING: Don't access any member variables after this point!
+    }
+}
+
+void ActionButtonsWidget::onEditButtonClicked()
+{
+    EditSaveDialog *dialog = new EditSaveDialog(m_itemName, this);
+    dialog->exec();
+
+    bool saved = dialog->isSaved();
+    QString newName;
+    if (saved) {
+        newName = dialog->getNewName();
+    }
+    delete dialog;  // Delete dialog BEFORE emitting signal
+    dialog = nullptr;  // Prevent dangling pointer
+
+    if (saved) {
+        m_itemName = newName;  // Update local copy
+        emit nameChanged(m_row, newName);
+    }
 }

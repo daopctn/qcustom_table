@@ -4,8 +4,7 @@
 #include <QMainWindow>
 #include <QTableView>
 #include <QStandardItemModel>
-
-class ActionButtonsDelegate;
+#include <QPushButton>
 
 class MainWindow : public QMainWindow
 {
@@ -20,12 +19,14 @@ private:
     void populateTestData();
 
 private slots:
-    void onButtonClicked(int row, int buttonIndex);
+    void onDeleteRequested(int row);
+    void onNameChanged(int row, const QString &newName);
+    void onAddRowClicked();
 
 private:
     QTableView *m_tableView;
     QStandardItemModel *m_model;
-    ActionButtonsDelegate *m_delegate;
+    QPushButton *m_addButton;
 };
 
 #endif // MAINWINDOW_H
